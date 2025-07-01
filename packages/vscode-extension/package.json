@@ -1,0 +1,100 @@
+{
+  "name": "@contextguard/vscode-extension",
+  "displayName": "ContextGuard",
+  "description": "Intelligent security layer for AI-assisted development",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Linters"
+  ],
+  "keywords": [
+    "security",
+    "ai",
+    "privacy",
+    "code-protection",
+    "assistant"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "contextguard.enable",
+        "title": "Enable Protection",
+        "category": "ContextGuard"
+      },
+      {
+        "command": "contextguard.disable",
+        "title": "Disable Protection",
+        "category": "ContextGuard"
+      },
+      {
+        "command": "contextguard.scanFile",
+        "title": "Scan Current File",
+        "category": "ContextGuard"
+      },
+      {
+        "command": "contextguard.showReport",
+        "title": "Show Security Report",
+        "category": "ContextGuard"
+      }
+    ],
+    "configuration": {
+      "title": "ContextGuard",
+      "properties": {
+        "contextguard.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable ContextGuard protection"
+        },
+        "contextguard.securityLevel": {
+          "type": "string",
+          "enum": ["strict", "balanced", "permissive"],
+          "default": "balanced",
+          "description": "Security detection level"
+        },
+        "contextguard.offlineMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable offline-first analysis"
+        }
+      }
+    },
+    "statusBarItems": [
+      {
+        "id": "contextguard.status",
+        "alignment": "right",
+        "priority": 100
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "tree-sitter": "^0.21.0",
+    "web-tree-sitter": "^0.21.0"
+  }
+}

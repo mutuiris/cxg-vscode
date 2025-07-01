@@ -1,0 +1,4 @@
+[submodule "core"]
+    path = core
+    url = git@github.com:mutuiris/cxg-core-private.git
+    branch = main
