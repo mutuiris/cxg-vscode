@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { ContextGuardProvider } from './providers/ContextGuardProvider';
+import { ContextGuardProvider } from './providers/ContextExtendedGuardProvider';
 import { StatusBarManager } from './ui/StatusBarManager';
 import { ConfigurationManager } from './configuration/ConfigurationManager';
 import { LocalAnalysisEngine } from './analysis/LocalAnalysisEngine';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('ContextGuard is now active!');
+    console.log('ContextExtendedGuard is now active!');
 
     // Initialize core components
     const config = new ConfigurationManager();
@@ -31,9 +31,9 @@ export function activate(context: vscode.ExtensionContext) {
     disposables.forEach(disposable => context.subscriptions.push(disposable));
 
     // Show activation message
-    vscode.window.showInformationMessage('ContextGuard is protecting your code!');
+    vscode.window.showInformationMessage('ContextExtendedGuard is protecting your code!');
 }
 
 export function deactivate() {
-    console.log('ContextGuard has been deactivated');
+    console.log('ContextExtendedGuard has been deactivated');
 }

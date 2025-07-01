@@ -1,6 +1,6 @@
 {
   "name": "@contextguard/vscode-extension",
-  "displayName": "ContextGuard",
+  "displayName": "ContextExtendedGuard",
   "description": "Intelligent security layer for AI-assisted development",
   "version": "0.1.0",
   "engines": {
@@ -25,41 +25,45 @@
   "contributes": {
     "commands": [
       {
-        "command": "contextguard.enable",
+        "command": "contextextendedguard.enable",
         "title": "Enable Protection",
-        "category": "ContextGuard"
+        "category": "ContextExtendedGuard"
       },
       {
-        "command": "contextguard.disable",
+        "command": "contextextendedguard.disable",
         "title": "Disable Protection",
-        "category": "ContextGuard"
+        "category": "ContextExtendedGuard"
       },
       {
-        "command": "contextguard.scanFile",
+        "command": "contextextendedguard.scanFile",
         "title": "Scan Current File",
-        "category": "ContextGuard"
+        "category": "ContextExtendedGuard"
       },
       {
-        "command": "contextguard.showReport",
+        "command": "contextextendedguard.showReport",
         "title": "Show Security Report",
-        "category": "ContextGuard"
+        "category": "ContextExtendedGuard"
       }
     ],
     "configuration": {
-      "title": "ContextGuard",
+      "title": "ContextExtendedGuard",
       "properties": {
-        "contextguard.enabled": {
+        "contextextendedguard.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable ContextGuard protection"
+          "description": "Enable ContextExtendedGuard protection"
         },
-        "contextguard.securityLevel": {
+        "contextextendedguard.securityLevel": {
           "type": "string",
-          "enum": ["strict", "balanced", "permissive"],
+          "enum": [
+            "strict",
+            "balanced",
+            "permissive"
+          ],
           "default": "balanced",
           "description": "Security detection level"
         },
-        "contextguard.offlineMode": {
+        "contextextendedguard.offlineMode": {
           "type": "boolean",
           "default": true,
           "description": "Enable offline-first analysis"
@@ -68,7 +72,7 @@
     },
     "statusBarItems": [
       {
-        "id": "contextguard.status",
+        "id": "contextextendedguard.status",
         "alignment": "right",
         "priority": 100
       }
@@ -83,14 +87,14 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "20.x",
+    "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.8"
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "sqlite3": "^5.1.6",
