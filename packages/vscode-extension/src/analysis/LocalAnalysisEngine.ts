@@ -17,7 +17,7 @@ export class LocalAnalysisEngine {
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
-        this.dbPath = path.join(context.globalStorageUri.fsPath, 'contextguard.db');
+        this.dbPath = path.join(context.globalStorageUri.fsPath, 'cxg.db');
         this.initializeDatabase();
     }
 
@@ -29,7 +29,7 @@ export class LocalAnalysisEngine {
         }
         
         // Initialize SQLite database (placeholder for now)
-        console.log(`Database initialized at: ${this.dbPath}`);
+        console.log(`CXG Database initialized at: ${this.dbPath}`);
     }
 
     public async analyzeCode(code: string, language: string): Promise<AnalysisResult> {

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 export class ConfigurationManager {
-    private static readonly CONFIG_SECTION = 'contextguard';
+    private static readonly CONFIG_SECTION = 'cxg';
 
     public isEnabled(): boolean {
         const config = vscode.workspace.getConfiguration(ConfigurationManager.CONFIG_SECTION);
@@ -16,6 +16,11 @@ export class ConfigurationManager {
     public isOfflineModeEnabled(): boolean {
         const config = vscode.workspace.getConfiguration(ConfigurationManager.CONFIG_SECTION);
         return config.get<boolean>('offlineMode', true);
+    }
+
+    public isAutoScanEnabled(): boolean {
+        const config = vscode.workspace.getConfiguration(ConfigurationManager.CONFIG_SECTION);
+        return config.get<boolean>('autoScan', true);
     }
 
     public async setEnabled(enabled: boolean): Promise<void> {

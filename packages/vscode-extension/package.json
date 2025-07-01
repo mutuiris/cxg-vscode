@@ -1,8 +1,9 @@
 {
-  "name": "@contextguard/vscode-extension",
-  "displayName": "ContextExtendedGuard",
+  "name": "@cxg/vscode-extension",
+  "displayName": "CXG - ContextExtendedGuard",
   "description": "Intelligent security layer for AI-assisted development",
   "version": "0.1.0",
+  "publisher": "cxg-team",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -16,7 +17,8 @@
     "ai",
     "privacy",
     "code-protection",
-    "assistant"
+    "assistant",
+    "cxg"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -25,35 +27,40 @@
   "contributes": {
     "commands": [
       {
-        "command": "contextextendedguard.enable",
+        "command": "cxg.enable",
         "title": "Enable Protection",
-        "category": "ContextExtendedGuard"
+        "category": "CXG"
       },
       {
-        "command": "contextextendedguard.disable",
+        "command": "cxg.disable",
         "title": "Disable Protection",
-        "category": "ContextExtendedGuard"
+        "category": "CXG"
       },
       {
-        "command": "contextextendedguard.scanFile",
+        "command": "cxg.scanFile",
         "title": "Scan Current File",
-        "category": "ContextExtendedGuard"
+        "category": "CXG"
       },
       {
-        "command": "contextextendedguard.showReport",
+        "command": "cxg.showReport",
         "title": "Show Security Report",
-        "category": "ContextExtendedGuard"
+        "category": "CXG"
+      },
+      {
+        "command": "cxg.showSettings",
+        "title": "Open Settings",
+        "category": "CXG"
       }
     ],
     "configuration": {
-      "title": "ContextExtendedGuard",
+      "title": "CXG - ContextExtendedGuard",
       "properties": {
-        "contextextendedguard.enabled": {
+        "cxg.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable ContextExtendedGuard protection"
+          "description": "Enable CXG protection"
         },
-        "contextextendedguard.securityLevel": {
+        "cxg.securityLevel": {
           "type": "string",
           "enum": [
             "strict",
@@ -63,16 +70,21 @@
           "default": "balanced",
           "description": "Security detection level"
         },
-        "contextextendedguard.offlineMode": {
+        "cxg.offlineMode": {
           "type": "boolean",
           "default": true,
           "description": "Enable offline-first analysis"
+        },
+        "cxg.autoScan": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan files on change"
         }
       }
     },
     "statusBarItems": [
       {
-        "id": "contextextendedguard.status",
+        "id": "cxg.status",
         "alignment": "right",
         "priority": 100
       }
@@ -84,17 +96,19 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "build": "npm run compile",
+    "dev": "npm run watch"
   },
   "devDependencies": {
-    "@types/node": "20.x",
-    "@types/vscode": "^1.101.0",
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
-    "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.8",
     "eslint": "^8.56.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8"
   },
   "dependencies": {
     "sqlite3": "^5.1.6",

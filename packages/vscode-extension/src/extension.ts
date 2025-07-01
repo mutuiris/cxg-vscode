@@ -1,24 +1,25 @@
 import * as vscode from 'vscode';
-import { ContextGuardProvider } from './providers/ContextExtendedGuardProvider';
+import { CXGProvider } from './providers/CXGProvider';
 import { StatusBarManager } from './ui/StatusBarManager';
 import { ConfigurationManager } from './configuration/ConfigurationManager';
 import { LocalAnalysisEngine } from './analysis/LocalAnalysisEngine';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('ContextExtendedGuard is now active!');
+    console.log('CXG (ContextExtendedGuard) is now active!');
 
     // Initialize core components
     const config = new ConfigurationManager();
     const statusBar = new StatusBarManager();
     const analysisEngine = new LocalAnalysisEngine(context);
-    const provider = new ContextGuardProvider(context, config, analysisEngine);
+    const provider = new CXGProvider(context, config, analysisEngine);
 
     // Register commands
     const commands = [
-        vscode.commands.registerCommand('contextguard.enable', () => provider.enable()),
-        vscode.commands.registerCommand('contextguard.disable', () => provider.disable()),
-        vscode.commands.registerCommand('contextguard.scanFile', () => provider.scanCurrentFile()),
-        vscode.commands.registerCommand('contextguard.showReport', () => provider.showReport())
+        vscode.commands.registerCommand('cxg.enable', () => provider.enable()),
+        vscode.commands.registerCommand('cxg.disable', () => provider.disable()),
+        vscode.commands.registerCommand('cxg.scanFile', () => provider.scanCurrentFile()),
+        vscode.commands.registerCommand('cxg.showReport', () => provider.showReport()),
+        vscode.commands.registerCommand('cxg.showSettings', () => provider.showSettings())
     ];
 
     // Register providers
@@ -31,9 +32,9 @@ export function activate(context: vscode.ExtensionContext) {
     disposables.forEach(disposable => context.subscriptions.push(disposable));
 
     // Show activation message
-    vscode.window.showInformationMessage('ContextExtendedGuard is protecting your code!');
+    vscode.window.showInformationMessage('🛡️ CXG is protecting your code!');
 }
 
 export function deactivate() {
-    console.log('ContextExtendedGuard has been deactivated');
+    console.log('CXG (ContextExtendedGuard) has been deactivated');
 }
