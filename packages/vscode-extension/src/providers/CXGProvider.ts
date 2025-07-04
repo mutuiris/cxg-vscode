@@ -1,276 +1,312 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ConfigurationManager } from '../configuration/ConfigurationManager';
 import { LocalAnalysisEngine, AnalysisResult } from '../analysis/LocalAnalysisEngine';
-import * as path from 'path';
 
+/**
+ * CXGProvider manages the core functionality of the CXG extension
+ * Coordinates between analysis engine, configuration, and user interface
+ */
 export class CXGProvider implements vscode.Disposable {
-  private context: vscode.ExtensionContext;
-  private config: ConfigurationManager;
-  private analysisEngine: LocalAnalysisEngine;
-  private disposables: vscode.Disposable[] = [];
+    private context: vscode.ExtensionContext;
+    private config: ConfigurationManager;
+    private analysisEngine: LocalAnalysisEngine;
+    private disposables: vscode.Disposable[] = [];
+    private isEnabled: boolean = true;
 
-  constructor(
-    context: vscode.ExtensionContext,
-    config: ConfigurationManager,
-    analysisEngine: LocalAnalysisEngine
-  ) {
-    this.context = context;
-    this.config = config;
-    this.analysisEngine = analysisEngine;
-
-    this.setupEventListeners();
-  }
-
-  private setupEventListeners(): void {
-    // Listen for document changes
-    const documentChangeListener = vscode.workspace.onDidChangeTextDocument((event) => {
-      if (this.config.isEnabled() && this.config.isAutoScanEnabled()) {
-        this.handleDocumentChange(event);
-      }
-    });
-
-    // Listen for configuration changes
-    const configChangeListener = this.config.onConfigurationChanged(() => {
-      this.handleConfigurationChange();
-    });
-
-    this.disposables.push(documentChangeListener, configChangeListener);
-  }
-
-  private handleDocumentChange(event: vscode.TextDocumentChangeEvent): void {
-    // Debounce analysis to avoid too frequent calls
-    const supportedLanguages = ['typescript', 'javascript', 'python', 'go', 'java', 'csharp'];
-
-    if (supportedLanguages.includes(event.document.languageId)) {
-      // Analyze changes after a delay
-      setTimeout(() => {
-        this.analyzeDocument(event.document);
-      }, 1000);
-    }
-  }
-
-  private handleConfigurationChange(): void {
-    console.log('CXG configuration changed');
-  }
-
-  public async enable(): Promise<void> {
-    await this.config.setEnabled(true);
-    vscode.window.showInformationMessage('🛡️ CXG protection enabled');
-  }
-
-  public async disable(): Promise<void> {
-    await this.config.setEnabled(false);
-    vscode.window.showWarningMessage('⚠️ CXG protection disabled');
-  }
-
-  public async scanCurrentFile(): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showWarningMessage('No active editor found');
-      return;
+    constructor(
+        context: vscode.ExtensionContext,
+        config: ConfigurationManager,
+        analysisEngine: LocalAnalysisEngine
+    ) {
+        this.context = context;
+        this.config = config;
+        this.analysisEngine = analysisEngine;
+        
+        this.setupEventHandlers();
+        console.log('CXG Provider initialized');
     }
 
-    const result = await this.analyzeDocument(editor.document);
-    this.showAnalysisResults(result);
-  }
+    /**
+     * Set up event handlers for document changes and other VS Code events
+     */
+    private setupEventHandlers(): void {
+        // Listen for configuration changes
+        this.disposables.push(
+            this.config.onConfigurationChanged(() => {
+                this.isEnabled = this.config.isEnabled();
+                console.log(`CXG enabled status changed: ${this.isEnabled}`);
+            })
+        );
 
-  public async showReport(): Promise<void> {
-    // Create and show a webview with detailed report
-    const panel = vscode.window.createWebviewPanel(
-      'cxgReport',
-      'CXG Security Report',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-      }
-    );
+        // Listen for document save events
+        this.disposables.push(
+            vscode.workspace.onDidSaveTextDocument(async (document) => {
+                if (this.isEnabled && this.shouldAnalyzeDocument(document)) {
+                    await this.analyzeDocument(document);
+                }
+            })
+        );
 
-    panel.webview.html = this.getWebviewContent();
-  }
-
-  public async showSettings(): Promise<void> {
-    // Open CXG settings
-    vscode.commands.executeCommand('workbench.action.openSettings', 'cxg');
-  }
-
-  private async analyzeDocument(document: vscode.TextDocument): Promise<AnalysisResult> {
-    const code = document.getText();
-    const language = document.languageId;
-    const fileName = path.basename(document.fileName);
-
-    return await this.analysisEngine.analyzeCode(code, language, fileName);
-  }
-
-  private showAnalysisResults(result: AnalysisResult): void {
-    if (result.riskLevel === 'high') {
-      vscode.window.showErrorMessage(
-        `High risk detected: ${result.detectedPatterns.join(', ')}`
-      );
-    } else if (result.riskLevel === 'medium') {
-      vscode.window.showWarningMessage(
-        `Medium risk detected: ${result.detectedPatterns.join(', ')}`
-      );
-    } else {
-      vscode.window.showInformationMessage('✅ No security risks detected');
+        // Listen for active editor changes
+        this.disposables.push(
+            vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+                if (this.isEnabled && editor && this.shouldAnalyzeDocument(editor.document)) {
+                    await this.analyzeDocument(editor.document);
+                }
+            })
+        );
     }
-  }
 
-  private getWebviewContent(): string {
-    const recentScans = this.analysisEngine.getRecentScans();
-    const summary = this.analysisEngine.getSecuritySummary();
+    /**
+     * Check if a document should be analyzed based on language and settings
+     */
+    private shouldAnalyzeDocument(document: vscode.TextDocument): boolean {
+        const supportedLanguages = ['javascript', 'typescript', 'python', 'go', 'java', 'csharp'];
+        return supportedLanguages.includes(document.languageId) && 
+               document.uri.scheme === 'file';
+    }
 
-    const scanRows = recentScans
-      .map(
-        (scan) => `
-        <tr class="scan-row ${scan.riskLevel}">
-            <td>${scan.fileName}</td>
-            <td>${scan.timestamp.toLocaleString()}</td>
-            <td><span class="risk-badge ${scan.riskLevel}">${scan.riskLevel.toUpperCase()}</span></td>
-            <td>${scan.detectedPatterns.join(', ') || 'None'}</td>
-        </tr>
-    `
-      )
-      .join('');
+    /**
+     * Analyze a document and handle the results
+     */
+    private async analyzeDocument(document: vscode.TextDocument): Promise<AnalysisResult> {
+        const code = document.getText();
+        const language = document.languageId;
+        const fileName = path.basename(document.fileName);
 
-    return `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>CXG Security Report</title>
-            <style>
-                body {
-                    font-family: var(--vscode-font-family);
-                    color: var(--vscode-foreground);
-                    background: var(--vscode-editor-background);
-                    padding: 20px;
-                }
-                .header {
-                    border-bottom: 1px solid var(--vscode-panel-border);
-                    padding-bottom: 10px;
-                    margin-bottom: 20px;
-                }
-                .summary {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                    gap: 15px;
-                    margin: 20px 0;
-                }
-                .summary-card {
-                    padding: 15px;
-                    border-radius: 6px;
-                    border: 1px solid var(--vscode-panel-border);
-                    text-align: center;
-                }
-                .summary-card h3 {
-                    margin: 0 0 5px 0;
-                    font-size: 24px;
-                }
-                .summary-card p {
-                    margin: 0;
-                    opacity: 0.8;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 20px;
-                }
-                th, td {
-                    padding: 12px;
-                    text-align: left;
-                    border-bottom: 1px solid var(--vscode-panel-border);
-                }
-                th {
-                    background: var(--vscode-editor-selectionBackground);
-                    font-weight: 600;
-                }
-                .risk-badge {
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                }
-                .risk-badge.high {
-                    background: var(--vscode-errorBackground);
-                    color: var(--vscode-errorForeground);
-                }
-                .risk-badge.medium {
-                    background: var(--vscode-warningBackground);
-                    color: var(--vscode-warningForeground);
-                }
-                .risk-badge.low {
-                    background: var(--vscode-inputValidation-infoBackground);
-                    color: var(--vscode-inputValidation-infoForeground);
-                }
-                .scan-row.high {
-                    background: rgba(255, 0, 0, 0.1);
-                }
-                .scan-row.medium {
-                    background: rgba(255, 165, 0, 0.1);
-                }
-                .no-scans {
-                    text-align: center;
-                    padding: 40px;
-                    opacity: 0.6;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>🛡️ CXG Security Report</h1>
-                <p>Real-time security analysis for your code</p>
-            </div>
+        console.log(`CXG: Analyzing document ${fileName} (${language})`);
+
+        try {
+            const result = await this.analysisEngine.analyzeCode(code, language, fileName);
             
-            <div class="summary">
-                <div class="summary-card">
-                    <h3>${summary.total}</h3>
-                    <p>Total Scans</p>
-                </div>
-                <div class="summary-card">
-                    <h3>${summary.high}</h3>
-                    <p>High Risk</p>
-                </div>
-                <div class="summary-card">
-                    <h3>${summary.medium}</h3>
-                    <p>Medium Risk</p>
-                </div>
-                <div class="summary-card">
-                    <h3>${summary.low}</h3>
-                    <p>Low Risk</p>
-                </div>
-            </div>
-            
-            <h3>Recent Scans</h3>
-            ${
-              recentScans.length > 0
-                ? `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>File</th>
-                            <th>Timestamp</th>
-                            <th>Risk Level</th>
-                            <th>Detected Patterns</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${scanRows}
-                    </tbody>
-                </table>
-            `
-                : `
-                <div class="no-scans">
-                    <p>No scans performed yet. Create and edit some files to see security analysis.</p>
-                </div>
-            `
+            // Handle analysis results
+            if (result.riskLevel === 'high') {
+                vscode.window.showWarningMessage(
+                    `CXG: High risk detected in ${fileName}. Click to view details.`,
+                    'View Details'
+                ).then(selection => {
+                    if (selection === 'View Details') {
+                        this.showAnalysisResults(result);
+                    }
+                });
+            } else if (result.riskLevel === 'medium') {
+                vscode.window.showInformationMessage(
+                    `CXG: Medium risk detected in ${fileName}. Consider reviewing.`,
+                    'View Details'
+                ).then(selection => {
+                    if (selection === 'View Details') {
+                        this.showAnalysisResults(result);
+                    }
+                });
             }
-        </body>
-        </html>
+
+            return result;
+        } catch (error) {
+            console.error('CXG: Analysis failed:', error);
+            vscode.window.showErrorMessage(`CXG: Analysis failed for ${fileName}: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Show detailed analysis results to the user
+     */
+    private showAnalysisResults(result: AnalysisResult): void {
+        const panel = vscode.window.createWebviewPanel(
+            'cxgAnalysisResults',
+            'CXG Analysis Results',
+            vscode.ViewColumn.Two,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true
+            }
+        );
+
+        panel.webview.html = this.getAnalysisResultsHtml(result);
+    }
+
+    /**
+     * Generate HTML for analysis results webview
+     */
+    private getAnalysisResultsHtml(result: AnalysisResult): string {
+        const riskColor = result.riskLevel === 'high' ? '#e74c3c' : 
+                         result.riskLevel === 'medium' ? '#f39c12' : '#27ae60';
+
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; }
+                    .risk-level { color: ${riskColor}; font-weight: bold; font-size: 18px; }
+                    .section { margin: 20px 0; padding: 15px; border-left: 4px solid ${riskColor}; }
+                    .match { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; }
+                    .severity-high { border-left: 4px solid #e74c3c; }
+                    .severity-medium { border-left: 4px solid #f39c12; }
+                    .severity-low { border-left: 4px solid #27ae60; }
+                </style>
+            </head>
+            <body>
+                <h1>🛡️ CXG Analysis Results</h1>
+                <div class="section">
+                    <h2>File: ${result.fileName}</h2>
+                    <p><strong>Risk Level:</strong> <span class="risk-level">${result.riskLevel.toUpperCase()}</span></p>
+                    <p><strong>Patterns Detected:</strong> ${result.detectedPatterns.join(', ') || 'None'}</p>
+                    <p><strong>Scan Time:</strong> ${result.timestamp.toLocaleString()}</p>
+                </div>
+
+                ${result.matches.length > 0 ? `
+                <div class="section">
+                    <h3>Detected Issues:</h3>
+                    ${result.matches.map(match => `
+                        <div class="match severity-${match.severity}">
+                            <strong>${match.pattern}</strong> (Line ${match.line}:${match.column})
+                            <br><code>${match.text}</code>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+
+                <div class="section">
+                    <h3>Recommendations:</h3>
+                    <ul>
+                        ${result.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="section">
+                    <h3>Summary:</h3>
+                    <ul>
+                        <li>Secrets: ${result.hasSecrets ? '⚠️ Detected' : '✅ None'}</li>
+                        <li>Business Logic: ${result.hasBusinessLogic ? '⚠️ Detected' : '✅ None'}</li>
+                        <li>Infrastructure: ${result.hasInfrastructureExposure ? '⚠️ Detected' : '✅ None'}</li>
+                    </ul>
+                </div>
+            </body>
+            </html>
         `;
-  }
-  public dispose(): void {
-    this.disposables.forEach((disposable) => disposable.dispose());
-  }
+    }
+
+    /**
+     * Enable CXG protection
+     */
+    public async enable(): Promise<void> {
+        await this.config.setEnabled(true);
+        this.isEnabled = true;
+        vscode.window.showInformationMessage('🛡️ CXG protection enabled');
+    }
+
+    /**
+     * Disable CXG protection
+     */
+    public async disable(): Promise<void> {
+        await this.config.setEnabled(false);
+        this.isEnabled = false;
+        vscode.window.showInformationMessage('🛡️ CXG protection disabled');
+    }
+
+    /**
+     * Scan the currently active file
+     */
+    public async scanCurrentFile(): Promise<void> {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showWarningMessage('No active file to scan');
+            return;
+        }
+
+        const result = await this.analyzeDocument(editor.document);
+        this.showAnalysisResults(result);
+    }
+
+    /**
+     * Show analysis report
+     */
+    public async showReport(): Promise<void> {
+        const recentScans = this.analysisEngine.getRecentScans();
+        const summary = this.analysisEngine.getSecuritySummary();
+
+        const panel = vscode.window.createWebviewPanel(
+            'cxgReport',
+            'CXG Security Report',
+            vscode.ViewColumn.Two,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true
+            }
+        );
+
+        panel.webview.html = this.getReportHtml(recentScans, summary);
+    }
+
+    /**
+     * Generate HTML for security report
+     */
+    private getReportHtml(recentScans: AnalysisResult[], summary: any): string {
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; }
+                    .summary { display: flex; gap: 20px; margin: 20px 0; }
+                    .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; }
+                    .card-high { background: #ffe6e6; border: 2px solid #e74c3c; }
+                    .card-medium { background: #fff3e0; border: 2px solid #f39c12; }
+                    .card-low { background: #e8f5e8; border: 2px solid #27ae60; }
+                    .scan-item { padding: 10px; margin: 10px 0; border-left: 4px solid #ddd; }
+                    .server-status { float: right; padding: 5px 10px; border-radius: 4px; }
+                    .server-online { background: #d4edda; color: #155724; }
+                    .server-offline { background: #f8d7da; color: #721c24; }
+                </style>
+            </head>
+            <body>
+                <h1>🛡️ CXG Security Report</h1>
+                
+                <div class="server-status ${this.analysisEngine.isServerAvailable() ? 'server-online' : 'server-offline'}">
+                    Backend: ${this.analysisEngine.isServerAvailable() ? 'Online' : 'Offline'}
+                </div>
+
+                <div class="summary">
+                    <div class="card card-high">
+                        <h3>High Risk</h3>
+                        <p>${summary.high}</p>
+                    </div>
+                    <div class="card card-medium">
+                        <h3>Medium Risk</h3>
+                        <p>${summary.medium}</p>
+                    </div>
+                    <div class="card card-low">
+                        <h3>Low Risk</h3>
+                        <p>${summary.low}</p>
+                    </div>
+                </div>
+
+                <h2>Recent Scans</h2>
+                ${recentScans.length > 0 ? recentScans.map(scan => `
+                    <div class="scan-item">
+                        <strong>${scan.fileName}</strong> - ${scan.riskLevel.toUpperCase()}
+                        <br><small>${scan.timestamp.toLocaleString()}</small>
+                        <br>Patterns: ${scan.detectedPatterns.join(', ') || 'None'}
+                    </div>
+                `).join('') : '<p>No recent scans available</p>'}
+            </body>
+            </html>
+        `;
+    }
+
+    /**
+     * Show CXG settings
+     */
+    public async showSettings(): Promise<void> {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'cxg');
+    }
+
+    /**
+     * Dispose of all resources
+     */
+    public dispose(): void {
+        this.disposables.forEach(disposable => disposable.dispose());
+    }
 }
