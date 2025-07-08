@@ -20,6 +20,7 @@ export interface MCPProperty {
   description?: string;
   enum?: string[];
   items?: MCPProperty;
+  properties?: Record<string, MCPProperty>;
 }
 
 export interface MCPRequest {
