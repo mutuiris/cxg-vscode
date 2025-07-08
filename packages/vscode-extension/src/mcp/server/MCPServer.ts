@@ -10,6 +10,7 @@ import {
   MCPServerConfig,
   MCPErrorResponse,
 } from '../types/MCPTypes';
+import { MCPHandlers } from '../handlers/MCPHandlers';
 
 /**
  * ContextExtendedGuard MCP Server Implementation
@@ -26,6 +27,7 @@ export class MCPServer implements vscode.Disposable {
   private readonly analysisEngine: LocalAnalysisEngine;
   private readonly config: ConfigurationManager;
   private readonly context: vscode.ExtensionContext;
+  private readonly handlers: MCPHandlers;
 
   private isRunning: boolean = false;
   private serverPort: number = 3000;
@@ -44,6 +46,7 @@ export class MCPServer implements vscode.Disposable {
     this.context = context;
     this.analysisEngine = analysisEngine;
     this.config = config;
+    this.handlers = new MCPHandlers(context, analysisEngine, config);
     this.lastStartTime = new Date();
 
     console.log('ContextExtendedGuard MCP Server initialized');
@@ -474,20 +477,16 @@ export class MCPServer implements vscode.Disposable {
     return sanitized;
   }
 
-  // TODO: Additional stub implementations for other handlers would go here...
   private async handleCheckPolicy(args: any): Promise<MCPResponse | MCPErrorResponse> {
-    // Implementation stub
-    return { content: [{ type: 'text', text: 'Policy check not implemented yet' }] };
+    return await this.handlers.handleCheckPolicy(args);
   }
 
   private async handleGetSecurityContext(args: any): Promise<MCPResponse> {
-    // Implementation stub
-    return { content: [{ type: 'text', text: 'Security context not implemented yet' }] };
+    return await this.handlers.handleGetSecurityContext(args);
   }
 
   private async handleAnalyzeFrameworkCode(args: any): Promise<MCPResponse | MCPErrorResponse> {
-    // Implementation stub
-    return { content: [{ type: 'text', text: 'Framework analysis not implemented yet' }] };
+    return await this.handlers.handleAnalyzeFrameworkCode(args);
   }
 
   private handleListResources(): MCPResponse {
