@@ -233,13 +233,13 @@ export class MCPServer implements vscode.Disposable {
         return await this.handleSanitizeCode(args);
 
       case 'checkPolicy':
-        return await this.handleCheckPolicy(args);
+        return await this.handlers.handleCheckPolicy(args);
 
       case 'getSecurityContext':
-        return await this.handleGetSecurityContext(args);
+        return await this.handlers.handleGetSecurityContext(args);
 
       case 'analyzeFrameworkCode':
-        return await this.handleAnalyzeFrameworkCode(args);
+        return await this.handlers.handleAnalyzeFrameworkCode(args);
 
       default:
         return this.createErrorResponse(`Unknown tool: ${name}`, 404);
