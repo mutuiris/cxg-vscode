@@ -1,7 +1,7 @@
 {
   "name": "@cxg/vscode-extension",
   "displayName": "CXG - ContextExtendedGuard",
-  "description": "Intelligent security layer for AI-assisted development",
+  "description": "Intelligent security layer for AI-assisted development with ContextExtendedGuard protection",
   "version": "0.1.0",
   "publisher": "cxg-team",
   "engines": {
@@ -9,7 +9,6 @@
   },
   "categories": [
     "Other",
-    "Machine Learning",
     "Linters"
   ],
   "keywords": [
@@ -18,10 +17,17 @@
     "privacy",
     "code-protection",
     "assistant",
-    "cxg"
+    "contextextendedguard",
+    "cxg",
+    "mcp",
+    "javascript",
+    "typescript"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -29,36 +35,76 @@
       {
         "command": "cxg.enable",
         "title": "Enable Protection",
-        "category": "CXG"
+        "category": "ContextExtendedGuard"
       },
       {
         "command": "cxg.disable",
         "title": "Disable Protection",
-        "category": "CXG"
+        "category": "ContextExtendedGuard"
       },
       {
         "command": "cxg.scanFile",
         "title": "Scan Current File",
-        "category": "CXG"
+        "category": "ContextExtendedGuard"
       },
       {
         "command": "cxg.showReport",
         "title": "Show Security Report",
-        "category": "CXG"
+        "category": "ContextExtendedGuard"
       },
       {
         "command": "cxg.showSettings",
         "title": "Open Settings",
-        "category": "CXG"
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.scanReactProject",
+        "title": "Scan React Project",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.scanNodeProject",
+        "title": "Scan Node.js Project",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.analyzePackageJson",
+        "title": "Analyze Package.json",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.sanitizeAndCopy",
+        "title": "Sanitize & Copy Code",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.startMCPServer",
+        "title": "Start MCP Server (AI Integration)",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.stopMCPServer",
+        "title": "Stop MCP Server",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.mcpStatus",
+        "title": "MCP Server Status",
+        "category": "ContextExtendedGuard"
+      },
+      {
+        "command": "cxg.analyzeForAI",
+        "title": "Analyze Code for AI Assistant",
+        "category": "ContextExtendedGuard"
       }
     ],
     "configuration": {
-      "title": "CXG - ContextExtendedGuard",
+      "title": "ContextExtendedGuard",
       "properties": {
         "cxg.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable CXG protection"
+          "description": "Enable/disable ContextExtendedGuard protection"
         },
         "cxg.securityLevel": {
           "type": "string",
@@ -68,51 +114,79 @@
             "permissive"
           ],
           "default": "balanced",
-          "description": "Security detection level"
+          "description": "Security analysis strictness level"
         },
         "cxg.offlineMode": {
           "type": "boolean",
-          "default": true,
-          "description": "Enable offline-first analysis"
+          "default": false,
+          "description": "Enable offline-only mode (no server communication)"
         },
         "cxg.autoScan": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically scan files on change"
+          "description": "Automatically scan files on save"
+        },
+        "cxg.enableMCPServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable MCP server for AI assistant integration"
+        },
+        "cxg.frameworkDetection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic JavaScript framework detection"
+        },
+        "cxg.mcpAutoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start MCP server on extension activation"
+        },
+        "cxg.mcpPort": {
+          "type": "number",
+          "default": 3000,
+          "description": "Port for MCP server (if applicable)"
         }
       }
     },
-    "statusBarItems": [
-      {
-        "id": "cxg.status",
-        "alignment": "right",
-        "priority": 100
-      }
-    ]
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "cxg.scanReactProject",
+          "when": "editorLangId == javascript || editorLangId == typescript || editorLangId == javascriptreact || editorLangId == typescriptreact"
+        },
+        {
+          "command": "cxg.sanitizeAndCopy",
+          "when": "editorHasSelection"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "cxg.analyzeForAI",
+          "when": "editorLangId == javascript || editorLangId == typescript",
+          "group": "contextextendedguard"
+        },
+        {
+          "command": "cxg.sanitizeAndCopy",
+          "when": "editorHasSelection",
+          "group": "contextextendedguard"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "vscode-test",
-    "build": "npm run compile",
-    "dev": "npm run watch"
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
-    "@vscode/test-cli": "^0.0.4",
-    "@vscode/test-electron": "^2.3.8"
+    "@types/node": "16.x",
+    "typescript": "^4.9.4",
+    "@vscode/test-electron": "^2.2.0"
   },
   "dependencies": {
-    "sqlite3": "^5.1.6",
-    "tree-sitter": "^0.21.0",
-    "web-tree-sitter": "^0.21.0"
+    "@modelcontextprotocol/sdk": "^0.1.0"
   }
 }
