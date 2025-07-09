@@ -9,7 +9,6 @@ export interface SecretPattern {
   description: string;
   severity: 'low' | 'medium' | 'high';
   category: 'api_key' | 'password' | 'token' | 'private_key' | 'database' | 'cloud' | 'generic';
-  examples: string[];
   falsePositives: RegExp[];
 }
 
@@ -45,7 +44,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'OpenAI API key pattern',
     severity: 'high',
     category: 'api_key',
-    examples: ['sk-1234567890abcdef1234567890abcdef12345678'],
     falsePositives: [/sk-test/gi, /sk-fake/gi, /sk-example/gi]
   },
 
@@ -55,7 +53,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'GitHub personal access token',
     severity: 'high',
     category: 'token',
-    examples: ['ghp_1234567890abcdef1234567890abcdef12'],
     falsePositives: [/ghp_test/gi, /ghp_fake/gi, /ghp_example/gi]
   },
 
@@ -65,7 +62,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'GitHub OAuth access token',
     severity: 'high',
     category: 'token',
-    examples: ['gho_1234567890abcdef1234567890abcdef12'],
     falsePositives: [/gho_test/gi, /gho_fake/gi]
   },
 
@@ -75,7 +71,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'AWS access key identifier',
     severity: 'high',
     category: 'cloud',
-    examples: ['AKIA1234567890ABCDEF'],
     falsePositives: [/AKIATEST/gi, /AKIAFAKE/gi]
   },
 
@@ -85,7 +80,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'AWS secret access key',
     severity: 'high',
     category: 'cloud',
-    examples: ['aws_secret_access_key = "abcdefghijklmnopqrstuvwxyz1234567890ABCD"'],
     falsePositives: [/test/gi, /fake/gi, /example/gi]
   },
 
@@ -95,7 +89,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Google API key',
     severity: 'high',
     category: 'api_key',
-    examples: ['AIzaSyD1234567890abcdef1234567890abcdef'],
     falsePositives: [/AIzaTest/gi, /AIzaFake/gi]
   },
 
@@ -105,7 +98,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Stripe API key (live or test)',
     severity: 'high',
     category: 'api_key',
-    examples: ['sk_live_1234567890abcdef1234', 'sk_test_1234567890abcdef1234'],
     falsePositives: [/sk_test_test/gi, /sk_live_fake/gi]
   },
 
@@ -115,7 +107,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Stripe webhook endpoint secret',
     severity: 'high',
     category: 'api_key',
-    examples: ['whsec_1234567890abcdef1234567890abcd'],
     falsePositives: [/whsec_test/gi, /whsec_fake/gi]
   },
 
@@ -125,7 +116,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Slack API token',
     severity: 'high',
     category: 'token',
-    examples: ['xoxb-123456789012-123456789012-1234567890abcdef1234567890'],
     falsePositives: [/xoxb-test/gi, /xoxb-fake/gi]
   },
 
@@ -135,7 +125,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Discord bot token',
     severity: 'high',
     category: 'token',
-    examples: ['MTA1234567890abcdef123456.GH1234.abcdef1234567890abcdef123456789'],
     falsePositives: [/test/gi, /fake/gi]
   },
 
@@ -145,7 +134,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Twilio API key',
     severity: 'high',
     category: 'api_key',
-    examples: ['SK1234567890abcdef1234567890abcdef'],
     falsePositives: [/SKtest/gi, /SKfake/gi]
   },
 
@@ -155,7 +143,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Mailgun API key',
     severity: 'high',
     category: 'api_key',
-    examples: ['key-1234567890abcdef1234567890abcdef'],
     falsePositives: [/key-test/gi, /key-fake/gi]
   },
 
@@ -165,7 +152,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'SendGrid API key',
     severity: 'high',
     category: 'api_key',
-    examples: ['SG.1234567890abcdef123456.abcdef1234567890abcdef1234567890abcdef123456789'],
     falsePositives: [/SG\.test/gi, /SG\.fake/gi]
   },
 
@@ -176,7 +162,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'MongoDB connection string',
     severity: 'high',
     category: 'database',
-    examples: ['mongodb://user:pass@localhost:27017/db', 'mongodb+srv://user:pass@cluster.mongodb.net/db'],
     falsePositives: [/localhost/gi, /example\.com/gi]
   },
 
@@ -186,7 +171,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'MySQL connection string',
     severity: 'high',
     category: 'database',
-    examples: ['mysql://user:pass@localhost:3306/database'],
     falsePositives: [/localhost/gi, /example\.com/gi]
   },
 
@@ -196,7 +180,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'PostgreSQL connection string',
     severity: 'high',
     category: 'database',
-    examples: ['postgresql://user:pass@localhost:5432/database'],
     falsePositives: [/localhost/gi, /example\.com/gi]
   },
 
@@ -206,7 +189,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Redis connection string',
     severity: 'medium',
     category: 'database',
-    examples: ['redis://user:pass@localhost:6379/0'],
     falsePositives: [/localhost/gi, /example\.com/gi]
   },
 
@@ -217,7 +199,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'RSA private key',
     severity: 'high',
     category: 'private_key',
-    examples: ['-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----'],
     falsePositives: [/test/gi, /example/gi, /dummy/gi]
   },
 
@@ -227,7 +208,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'OpenSSH private key',
     severity: 'high',
     category: 'private_key',
-    examples: ['-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA...\n-----END OPENSSH PRIVATE KEY-----'],
     falsePositives: [/test/gi, /example/gi, /dummy/gi]
   },
 
@@ -237,7 +217,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Elliptic curve private key',
     severity: 'high',
     category: 'private_key',
-    examples: ['-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIK...\n-----END EC PRIVATE KEY-----'],
     falsePositives: [/test/gi, /example/gi, /dummy/gi]
   },
 
@@ -248,7 +227,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Generic API key pattern',
     severity: 'medium',
     category: 'api_key',
-    examples: ['api_key = "abc123def456ghi789"', 'apiKey: "xyz789abc123def456"'],
     falsePositives: [/test/gi, /fake/gi, /example/gi, /placeholder/gi, /your_api_key/gi]
   },
 
@@ -258,7 +236,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Generic password pattern',
     severity: 'medium',
     category: 'password',
-    examples: ['password = "mySecretPass123"', 'passwd: "supersecret456"'],
     falsePositives: [/password/gi, /test/gi, /fake/gi, /example/gi, /placeholder/gi, /your_password/gi]
   },
 
@@ -268,7 +245,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Generic token pattern',
     severity: 'medium',
     category: 'token',
-    examples: ['token = "abc123def456ghi789jkl012"', 'bearer: "xyz789abc123def456ghi"'],
     falsePositives: [/test/gi, /fake/gi, /example/gi, /placeholder/gi, /your_token/gi]
   },
 
@@ -278,7 +254,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Generic secret pattern',
     severity: 'medium',
     category: 'generic',
-    examples: ['secret = "mySecret123456"', 'SECRET: "topSecret789"'],
     falsePositives: [/secret/gi, /test/gi, /fake/gi, /example/gi, /placeholder/gi, /your_secret/gi]
   },
 
@@ -288,7 +263,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'JSON Web Token',
     severity: 'high',
     category: 'token',
-    examples: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'],
     falsePositives: [/test/gi, /fake/gi, /example/gi]
   },
 
@@ -299,7 +273,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Email address with password or credentials',
     severity: 'medium',
     category: 'password',
-    examples: ['user@example.com:password123', 'admin@site.com/secret456'],
     falsePositives: [/test@/gi, /fake@/gi, /example@/gi]
   },
 
@@ -310,7 +283,6 @@ export const SECRET_PATTERNS: Record<string, SecretPattern> = {
     description: 'Environment variable containing secrets',
     severity: 'low',
     category: 'generic',
-    examples: ['process.env.API_SECRET', 'ENV["DATABASE_PASSWORD"]'],
     falsePositives: [/test/gi, /fake/gi, /example/gi]
   }
 };
