@@ -63,6 +63,18 @@ export interface BusinessLogicIndicator {
   severity: 'low' | 'medium' | 'high';
 }
 
+// Enhanced interfaces for SemanticAnalyzer
+export interface BusinessLogicPattern {
+  type: string;
+  pattern: string;
+  matches: Array<{
+    line: number;
+    column: number;
+    text: string;
+  }>;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
 export interface SemanticContext {
   functions: FunctionInfo[];
   variables: VariableInfo[];
@@ -70,9 +82,45 @@ export interface SemanticContext {
   exports: ExportInfo[];
   classes: ClassInfo[];
   businessLogicIndicators: BusinessLogicIndicator[];
+  patterns: BusinessLogicPattern[];
+  frameworks: FrameworkDetection[];
+  secrets: {
+    hasSecrets: boolean;
+    matches: Array<{
+      pattern: string;
+      line: number;
+      column: number;
+      severity: 'low' | 'medium' | 'high';
+    }>;
+  };
+  complexity: CodeComplexity;
+  relationships: {
+    functionCalls: Array<{ caller: string; callee: string; type: 'direct' | 'indirect' }>;
+    dataFlow: Array<{ from: string; to: string; via: string }>;
+    dependencies: Array<{ dependent: string; dependency: string; type: 'strong' | 'weak' }>;
+    coupling: {
+      afferent: number;
+      efferent: number;
+      instability: number;
+    };
+  };
+  riskFactors: Array<{
+    type: 'security' | 'maintainability' | 'performance' | 'reliability';
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    description: string;
+    location: { line: number; column?: number };
+    recommendation: string;
+  }>;
 }
 
 export interface CodeComplexity {
+  cyclomatic: number;
+  cognitive: number;
+  maintainability: number;
+  technical_debt: number;
+  hotspots: Array<{ type: string; name: string; line: number; complexity: number }>;
+
+  // Legacy properties for backward compatibility
   cyclomaticComplexity: number;
   cognitiveComplexity: number;
   nestingDepth: number;
