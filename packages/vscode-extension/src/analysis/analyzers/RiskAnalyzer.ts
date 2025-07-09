@@ -8,6 +8,14 @@ import {
   OverallRisk,
 } from '../interfaces/AnalysisInterfaces';
 
+export type {
+  RiskAnalysisResult,
+  CategoryRisk,
+  RiskItem,
+  QuickRiskResult,
+  OverallRisk,
+} from '../interfaces/AnalysisInterfaces';
+
 /**
  * Risk Analysis Engine
  * Provides comprehensive risk assessment for code security and quality

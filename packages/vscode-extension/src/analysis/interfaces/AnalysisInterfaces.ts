@@ -132,3 +132,84 @@ export interface QuickRiskResult {
   recommendations: string[];
   processingTime: number;
 }
+
+// Type definitions for Intelligence Analysis
+export interface IntelligenceAnalysisResult {
+  threatIntelligence: ThreatIntelligence;
+  behaviorAnalysis: BehaviorAnalysis;
+  intentAnalysis: IntentAnalysis;
+  anomalyDetection: AnomalyDetection;
+  contextualInsights: ContextualInsights;
+  actionableRecommendations: ActionableRecommendations;
+  overallAssessment: OverallAssessment;
+  timestamp: Date;
+}
+
+export interface ThreatIntelligence {
+  threatLevel: 'low' | 'medium' | 'high' | 'critical';
+  knownThreats: Array<{ type: string; severity: 'low' | 'medium' | 'high'; description: string }>;
+  maliciousPatterns: Array<{ pattern: string; risk: 'low' | 'medium' | 'high'; explanation: string }>;
+  suspiciousActivity: Array<{ activity: string; confidence: number; evidence: string[] }>;
+  dataExfiltration: { risk: 'low' | 'medium' | 'high'; indicators: string[]; likelihood: number };
+  codeInjection: { risk: 'low' | 'medium' | 'high'; vectors: string[]; mitigation: string[] };
+  threatSources: string[];
+  mitigationPriority: 'immediate' | 'urgent' | 'normal' | 'low';
+}
+
+export interface BehaviorAnalysis {
+  accessPatterns: Array<{ pattern: string; frequency: number; risk: 'low' | 'medium' | 'high' }>;
+  communicationPatterns: { type: string; destinations: string[]; protocols: string[]; risk: 'low' | 'medium' | 'high' };
+  dataProcessingPatterns: { operations: string[]; sensitivity: 'low' | 'medium' | 'high'; volume: 'low' | 'medium' | 'high' };
+  resourceUsagePatterns: any;
+  timeBasedPatterns: any;
+  behaviorScore: number;
+  anomalies: string[];
+}
+
+export interface IntentAnalysis {
+  primaryPurpose: string;
+  secondaryPurposes: string[];
+  hiddenFunctionality: any[];
+  businessAlignment: number;
+  technicalAlignment: number;
+  intentClarity: number;
+  legitimacyScore: number;
+  suspicionIndicators: string[];
+}
+
+export interface AnomalyDetection {
+  structuralAnomalies: any[];
+  behavioralAnomalies: any[];
+  patternAnomalies: any[];
+  statisticalAnomalies: any[];
+  anomalyScore: number;
+  confidence: number;
+}
+
+export interface ContextualInsights {
+  frameworkSpecificInsights: string[];
+  businessContextInsights: string[];
+  securityContextInsights: string[];
+  complianceInsights: string[];
+  performanceInsights: string[];
+  keyFindings: string[];
+  strategicRecommendations: string[];
+}
+
+export interface ActionableRecommendations {
+  immediateActions: string[];
+  shortTermActions: string[];
+  longTermActions: string[];
+  preventiveActions: string[];
+  monitoringActions: string[];
+  priorityMatrix: any;
+  implementationRoadmap: any;
+}
+
+export interface OverallAssessment {
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  confidence: number;
+  actionRequired: boolean;
+  urgency: 'immediate' | 'urgent' | 'normal' | 'low';
+  summary: string;
+}
