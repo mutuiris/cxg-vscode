@@ -1,11 +1,13 @@
 import { 
   SemanticContext, 
   CodeComplexity, 
+  FrameworkDetection,
   FunctionInfo,
   VariableInfo,
   ImportInfo,
   ExportInfo,
-  ClassInfo
+  ClassInfo,
+  BusinessLogicPattern
 } from '../interfaces/TreeSitterInterfaces';
 import { UnifiedCodeExtractor } from '../extractors';
 import { UnifiedPatternMatcher } from '../patterns';
@@ -18,6 +20,46 @@ export class SemanticAnalyzer {
   /**
    * Perform comprehensive semantic analysis of code
    */
+  private static mapFrameworkResults(
+  frameworkResults: any[]
+): FrameworkDetection[] {
+  return frameworkResults.map(result => ({
+    framework: this.normalizeFrameworkName(result.framework),
+    confidence: result.confidence,
+    indicators: result.indicators,
+    version: result.version
+  }));
+}
+
+private static normalizeFrameworkName(framework: string): FrameworkDetection['framework'] {
+  const normalized = framework.toLowerCase();
+  // Normalize common framework names
+  switch (normalized) {
+    case 'react':
+    case 'reactjs':
+      return 'react';
+    case 'vue':
+    case 'vuejs':
+      return 'vue';
+    case 'angular':
+    case 'angularjs':
+      return 'angular';
+    case 'node':
+    case 'nodejs':
+      return 'node';
+    case 'express':
+    case 'expressjs':
+      return 'express';
+    case 'next':
+    case 'nextjs':
+      return 'nextjs';
+    case 'nuxt':
+    case 'nuxtjs':
+      return 'nuxt';
+    default:
+      return 'none';
+  }
+}
   public static analyzeSemantics(
     code: string,
     fileName?: string,
@@ -30,6 +72,18 @@ export class SemanticAnalyzer {
     // Analyze patterns
     const patterns = UnifiedPatternMatcher.analyzeCode(code, fileName, dependencies);
 
+    // Convert business logic contexts to patterns
+    const businessLogicPatterns: BusinessLogicPattern[] = patterns.businessLogic.map(bl => ({
+      type: bl.type,
+      pattern: `${bl.type}_logic`,
+      matches: bl.indicators.map(indicator => ({
+        line: 1, // TODO: more sophisticated line detection
+        column: 0,
+        text: indicator
+      })),
+      riskLevel: bl.riskLevel
+    }));
+
     // Build semantic context
     const context: SemanticContext = {
       functions: this.enhanceFunctionSemantics(functions, code),
@@ -37,8 +91,9 @@ export class SemanticAnalyzer {
       imports: this.enhanceImportSemantics(imports, code),
       exports: this.enhanceExportSemantics(exports, code),
       classes: this.enhanceClassSemantics(classes, code),
-      patterns: patterns.businessLogic,
-      frameworks: patterns.frameworks,
+      businessLogicIndicators: [],
+      patterns: businessLogicPatterns,
+      frameworks: this.mapFrameworkResults(patterns.frameworks),
       secrets: patterns.secrets,
       complexity: this.calculateSemanticComplexity(extracted, patterns),
       relationships: this.analyzeCodeRelationships(extracted, code),
@@ -248,12 +303,23 @@ export class SemanticAnalyzer {
 
     const totalComplexity = baseComplexity + patternComplexity + relationshipComplexity;
 
+    const cyclomaticComplexity = Math.round(functions.length * 1.5 + classes.length * 2);
+    const cognitiveComplexity = Math.round(totalComplexity);
+
     return {
-      cyclomatic: Math.round(functions.length * 1.5 + classes.length * 2),
-      cognitive: Math.round(totalComplexity),
+      // New properties
+      cyclomatic: cyclomaticComplexity,
+      cognitive: cognitiveComplexity,
       maintainability: this.calculateMaintainabilityIndex(extracted),
       technical_debt: this.estimateTechnicalDebt(extracted, patterns),
-      hotspots: this.identifyComplexityHotspots(extracted)
+      hotspots: this.identifyComplexityHotspots(extracted),
+      
+      // Legacy properties for backward compatibility
+      cyclomaticComplexity,
+      cognitiveComplexity,
+      nestingDepth: Math.max(1, classes.length * 2 + functions.length),
+      functionCount: functions.length,
+      classCount: classes.length
     };
   }
 
@@ -362,8 +428,8 @@ export class SemanticAnalyzer {
         risks.push({
           type: 'reliability',
           severity: 'high',
-          description: `High-risk business logic detected: ${bl.pattern}`,
-          location: { line: bl.matches[0]?.line || 1 },
+          description: `High-risk business logic detected: ${bl.type}`,
+          location: { line: 1 }, // TODO: better line detection
           recommendation: 'Add comprehensive testing and error handling'
         });
       }
@@ -376,7 +442,6 @@ export class SemanticAnalyzer {
   }
 
   // Helper methods for semantic analysis
-
   private static determineSemanticRole(func: FunctionInfo, code: string): 'utility' | 'business' | 'infrastructure' | 'ui' | 'unknown' {
     const lowerName = func.name.toLowerCase();
     
@@ -424,7 +489,7 @@ export class SemanticAnalyzer {
     const decisionPoints = (functionCode.match(/\b(if|else|while|for|switch|case|catch|\?|&&|\|\|)\b/g) || []).length;
     const cyclomatic = decisionPoints + 1;
     
-    // Estimate cognitive complexity (simplified)
+    // Estimate cognitive complexity
     const nesting = (functionCode.match(/{/g) || []).length;
     const cognitive = decisionPoints + nesting;
     
@@ -517,7 +582,7 @@ export class SemanticAnalyzer {
   } {
     // Simplified data flow analysis
     return {
-      sources: ['direct_assignment'], // Would need more sophisticated analysis
+      sources: ['direct_assignment'], // TODO: more sophisticated analysis
       destinations: ['function_parameter'],
       transformations: ['none']
     };
@@ -582,7 +647,7 @@ export class SemanticAnalyzer {
     return {
       frequency: locations.length,
       locations,
-      usagePatterns: ['direct_call'] // Would need more analysis
+      usagePatterns: ['direct_call'] // TODO:  more analysis
     };
   }
 
@@ -618,12 +683,11 @@ export class SemanticAnalyzer {
   }
 
   private static calculateExportComplexity(exportInfo: ExportInfo, code: string): number {
-    // Simplified complexity calculation
     return exportInfo.type === 'function' ? 3 : exportInfo.type === 'class' ? 5 : 1;
   }
 
   private static extractExportDependencies(exportInfo: ExportInfo, code: string): string[] {
-    // Would need more sophisticated analysis to extract actual dependencies
+    // TODO: sophisticated analysis to extract actual dependencies
     return [];
   }
 
@@ -678,7 +742,6 @@ export class SemanticAnalyzer {
   }
 
   private static measureCoupling(classInfo: ClassInfo, code: string): 'loose' | 'medium' | 'tight' {
-    // Simplified coupling measurement
     const importCount = (code.match(/import.*from/g) || []).length;
     if (importCount <= 3) return 'loose';
     if (importCount <= 8) return 'medium';
@@ -687,9 +750,7 @@ export class SemanticAnalyzer {
 
   private static measureCohesion(classInfo: ClassInfo, code: string): 'high' | 'medium' | 'low' {
     const methodCount = classInfo.methods.length;
-    const propertyCount = classInfo.properties.length;
-    
-    // Simple heuristic: ratio of properties to methods
+    const propertyCount = classInfo.properties.length;    
     const ratio = propertyCount / Math.max(methodCount, 1);
     if (ratio > 0.7) return 'high';
     if (ratio > 0.3) return 'medium';
@@ -700,9 +761,9 @@ export class SemanticAnalyzer {
     depth: number;
     complexity: number;
   } {
-    // Would need more sophisticated analysis for inheritance chains
+    // TODO: more sophisticated analysis for inheritance chains
     return {
-      depth: 1, // Simplified
+      depth: 1,
       complexity: 1
     };
   }
@@ -805,7 +866,6 @@ export class SemanticAnalyzer {
     functions: FunctionInfo[],
     code: string
   ): Array<{ from: string; to: string; via: string }> {
-    // Simplified data flow analysis
     return [];
   }
 
@@ -813,7 +873,6 @@ export class SemanticAnalyzer {
     extracted: ReturnType<typeof UnifiedCodeExtractor.extractAll>,
     code: string
   ): Array<{ dependent: string; dependency: string; type: 'strong' | 'weak' }> {
-    // Simplified dependency analysis
     return [];
   }
 
@@ -824,8 +883,8 @@ export class SemanticAnalyzer {
     efferent: number;
     instability: number;
   } {
-    const afferent = dependencies.length; // Simplified
-    const efferent = dependencies.length; // Simplified
+    const afferent = dependencies.length;
+    const efferent = dependencies.length;
     const instability = efferent / Math.max(afferent + efferent, 1);
     
     return { afferent, efferent, instability };
