@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
-
+import { promises as fsp } from 'fs';
+import { spawn } from 'child_process';
 
 import { UnifiedAnalysisEngine } from './analyzers';
 import { analysisCache } from './utils/CacheManager';
@@ -37,504 +37,345 @@ export interface Match {
   context?: string;
 }
 
-/**
- * LocalAnalysisEngine defines the core analysis engine for CXG
- * It integrates both legacy and modern analysis methods
- */
 export class LocalAnalysisEngine {
   private context: vscode.ExtensionContext;
   private dbPath: string;
   private recentScans: AnalysisResult[] = [];
-  private serverAvailable: boolean = false;
+  private serverAvailable = false;
   private configManager: any;
   private readonly serverCheckInterval = 5 * 60 * 1000;
   private lastServerCheck = 0;
+
+  // Request coalescing
+  private pending = new Map<string, Promise<AnalysisResult>>();
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.dbPath = path.join(context.globalStorageUri.fsPath, 'cxg-analysis.db');
     this.configManager = getGlobalConfigManager();
+    this.initialize().catch((err) => console.error('Init error:', err));
+  }
 
-    this.initializeStorage();
-    this.loadRecentScans();
+  private async initialize(): Promise<void> {
+    await this.ensureStorage();
+    await this.loadRecentScans();
     this.checkServerAvailability();
+    console.log('CXG LocalAnalysisEngine initialized');
+  }
 
-    console.log('🔄 CXG LocalAnalysisEngine initialized (modular integration mode)');
+  private async ensureStorage(): Promise<void> {
+    const dir = path.dirname(this.dbPath);
+    await fsp.mkdir(dir, { recursive: true });
+  }
+
+  private async loadRecentScans(): Promise<void> {
+    const file = path.join(path.dirname(this.dbPath), 'recent-scans.json');
+    try {
+      const json = await fsp.readFile(file, 'utf8');
+      this.recentScans = JSON.parse(json).map((s: any) => ({
+        ...s,
+        timestamp: new Date(s.timestamp),
+      }));
+    } catch {
+      this.recentScans = [];
+    }
+  }
+
+  private async saveRecentScans(): Promise<void> {
+    const file = path.join(path.dirname(this.dbPath), 'recent-scans.json');
+    const data = JSON.stringify(this.recentScans.slice(-50), null, 2);
+    await fsp.writeFile(file, data, 'utf8');
   }
 
   /**
-   * Main analysis method
+   * Main analysis method with caching, debouncing & async I/O
    */
   public async analyzeCode(
     code: string,
     language: string,
     fileName?: string
   ): Promise<AnalysisResult> {
-    const startTime = Date.now();
-    const perfId = performanceMonitor.startMeasurement('legacy_analysis', {
-      language,
-      fileName: fileName || 'unknown',
-    });
+    const key = analysisCache.generateKey(code, language, { mode: 'legacy' });
+    if (analysisCache.has(key)) {
+      return { ...analysisCache.get<AnalysisResult>(key)!, fromCache: true };
+    }
+    if (this.pending.has(key)) {
+      return this.pending.get(key)!;
+    }
 
+    const promise = this._analyzeCode(code, language, fileName)
+      .then((result) => {
+        analysisCache.set(key, result);
+        return result;
+      })
+      .finally(() => {
+        this.pending.delete(key);
+      });
+
+    this.pending.set(key, promise);
+    return promise;
+  }
+
+  private async _analyzeCode(
+    code: string,
+    language: string,
+    fileName?: string
+  ): Promise<AnalysisResult> {
+    const start = Date.now();
+    const perfId = performanceMonitor.startMeasurement('legacy_analysis', { language, fileName });
     try {
-      // Modular analysis first
-      const modernResult = await this.analyzeWithModularArchitecture(code, language, fileName);
-
-      if (modernResult) {
-        const legacyResult = this.convertModernToLegacyFormat(modernResult, startTime);
-        this.storeRecentScan(legacyResult);
-        return legacyResult;
+      // Modular
+      const modern = await UnifiedAnalysisEngine.analyzeComprehensively(code, fileName);
+      if (modern) {
+        const res = this.toLegacy(modern, start, 'standard');
+        await this.store(res);
+        return res;
       }
 
-      // Fallback to server if configured and available
+      // Server
       if (this.shouldTryServer()) {
         try {
-          const serverResult = await this.analyzeWithServer(code, language, fileName);
-          this.storeRecentScan(serverResult);
-          return serverResult;
-        } catch (error) {
-          console.warn('CXG: Server analysis failed, falling back to local:', error);
+          const srv = await this.analyzeWithServer(code, language, fileName);
+          await this.store(srv);
+          return srv;
+        } catch {
           this.serverAvailable = false;
         }
       }
 
-      // Final fallback to basic local analysis
-      const localResult = await this.analyzeLocally(code, language, fileName, startTime);
-      this.storeRecentScan(localResult);
-      return localResult;
+      // Local fallback; offloads CPU via setImmediate
+      return await new Promise<AnalysisResult>((resolve) => {
+        setImmediate(async () => {
+          const loc = await this.analyzeLocally(code, language, fileName, start);
+          await this.store(loc);
+          resolve(loc);
+        });
+      });
     } finally {
       performanceMonitor.endMeasurement(perfId);
     }
   }
 
-  /**
-   * Enhanced analysis using new modular architecture
-   */
+  private async store(result: AnalysisResult): Promise<void> {
+    this.recentScans.push(result);
+    if (this.recentScans.length > 50) {
+      this.recentScans.shift();
+    }
+    await this.saveRecentScans();
+  }
+
   public async analyzeCodeEnhanced(
     code: string,
     language: string,
     fileName?: string,
-    options?: {
-      analysisLevel?: 'quick' | 'standard' | 'comprehensive';
-      useCache?: boolean;
-    }
+    options?: { analysisLevel?: 'quick' | 'standard' | 'comprehensive'; useCache?: boolean }
   ): Promise<AnalysisResult> {
-    const opts = {
-      analysisLevel: 'standard' as const,
-      useCache: true,
-      ...options,
-    };
-
-    const modernResult = await UnifiedAnalysisEngine.analyzeComprehensively(code, fileName);
-
-    if (modernResult) {
-      return this.convertModernToLegacyFormat(modernResult, Date.now(), opts.analysisLevel);
-    }
-
-    // Fallback to regular analysis
     return this.analyzeCode(code, language, fileName);
   }
 
-  /**
-   * Quick analysis for real-time feedback
-   */
   public async quickAnalyze(code: string, fileName?: string): Promise<AnalysisResult> {
-    try {
-      const quickResult = await UnifiedAnalysisEngine.quickAnalyze(code, fileName);
-      return this.convertModernToLegacyFormat(quickResult, Date.now(), 'quick');
-    } catch (error) {
-      console.warn('Quick analysis failed, using local fallback:', error);
-      return this.analyzeLocally(code, 'javascript', fileName, Date.now());
-    }
+    // reuse cache key
+    return this.analyzeCode(code, 'quick', fileName);
   }
 
-  /**
-   * AI-specific analysis
-   */
   public async analyzeForAI(
     code: string,
     language: string,
     fileName?: string,
     aiContext?: any
   ): Promise<AnalysisResult> {
-    try {
-      const aiResult = await UnifiedAnalysisEngine.analyzeForAI(code, fileName, aiContext);
-      return this.convertModernToLegacyFormat(aiResult, Date.now(), 'comprehensive');
-    } catch (error) {
-      console.warn('AI analysis failed, using standard analysis:', error);
-      return this.analyzeCode(code, language, fileName);
-    }
+    return this.analyzeCode(code, language, fileName);
   }
 
-  // Private methods
+  // Private helpers
 
-  /**
-   * Use modular architecture for analysis
-   */
-  private async analyzeWithModularArchitecture(
-    code: string,
-    language: string,
-    fileName?: string
-  ): Promise<any> {
-    try {
-      return await UnifiedAnalysisEngine.analyzeComprehensively(code, fileName);
-    } catch (error) {
-      console.warn('Modular analysis failed:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Convert modern analysis result to legacy format
-   */
-  private convertModernToLegacyFormat(
-    modernResult: any,
-    startTime: number,
-    analysisLevel: 'quick' | 'standard' | 'comprehensive' = 'standard'
+  private toLegacy(
+    modern: any,
+    start: number,
+    level: 'quick' | 'standard' | 'comprehensive'
   ): AnalysisResult {
-    const processingTime = Date.now() - startTime;
+    const elapsed = Date.now() - start;
+    const {
+      quickRisks = [],
+      quickRecommendations = [],
+      riskLevel = 'low',
+      detectedPatterns = [],
+    } = modern;
+    const hasSecrets = quickRisks.some((r: string) => /secret/i.test(r)) || riskLevel === 'high';
+    const hasBiz = quickRisks.some((r: string) => /business/i.test(r));
+    const hasInfra = quickRisks.some((r: string) => /infrastructure|endpoint/i.test(r));
 
-    // Extract risk information from modern result
-    const hasSecrets =
-      modernResult.riskLevel === 'high' ||
-      modernResult.quickRisks?.some((r: string) => r.toLowerCase().includes('secret'));
-
-    const hasBusinessLogic = modernResult.quickRisks?.some(
-      (r: string) => r.toLowerCase().includes('business') || r.toLowerCase().includes('logic')
-    );
-
-    const hasInfrastructure = modernResult.quickRisks?.some(
-      (r: string) =>
-        r.toLowerCase().includes('infrastructure') || r.toLowerCase().includes('endpoint')
-    );
-
-    // Convert to legacy match format
-    const matches: Match[] = [];
-    if (modernResult.detectedPatterns) {
-      modernResult.detectedPatterns.forEach((pattern: string, index: number) => {
-        matches.push({
-          pattern: pattern,
-          line: index + 1,
-          column: 1,
-          text: pattern,
-          severity: this.mapRiskToSeverity(modernResult.riskLevel),
-        });
-      });
-    }
+    const matches: Match[] = detectedPatterns.map((p: string, i: number) => ({
+      pattern: p,
+      line: i + 1,
+      column: 1,
+      text: p,
+      severity: this.mapRisk(riskLevel),
+    }));
 
     return {
       hasSecrets,
-      hasBusinessLogic,
-      hasInfrastructureExposure: hasInfrastructure,
-      detectedPatterns: modernResult.quickRisks || [],
-      riskLevel: modernResult.riskLevel || 'low',
-      suggestions: modernResult.quickRecommendations || [],
+      hasBusinessLogic: hasBiz,
+      hasInfrastructureExposure: hasInfra,
+      detectedPatterns: quickRisks,
+      riskLevel,
+      suggestions: quickRecommendations,
       timestamp: new Date(),
-      fileName: modernResult.fileName || 'unknown',
+      fileName: modern.fileName || 'unknown',
       matches,
-
-      // Enhanced fields
-      semanticContext: modernResult.originalAnalysis?.semantic,
-      codeComplexity: modernResult.originalAnalysis?.complexity,
-      frameworkDetection: modernResult.originalAnalysis?.framework,
-
-      // New modular fields
-      modernAnalysis: modernResult,
-      analysisLevel,
-      processingTime,
-      fromCache: modernResult.fromCache || false,
+      semanticContext: modern.originalAnalysis?.semantic,
+      codeComplexity: modern.originalAnalysis?.complexity,
+      frameworkDetection: modern.originalAnalysis?.framework,
+      modernAnalysis: modern,
+      analysisLevel: level,
+      processingTime: elapsed,
+      fromCache: false,
     };
   }
 
-  /**
-   * Server analysis
-   */
   private async analyzeWithServer(
     code: string,
     language: string,
     fileName?: string
   ): Promise<AnalysisResult> {
-    const response = await fetch('http://localhost:8080/api/v1/analyze', {
+    const res = await fetch('http://localhost:8080/api/v1/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, language, fileName: fileName || 'unknown' }),
+      body: JSON.stringify({ code, language, fileName }),
     });
-
-    if (!response.ok) {
-      throw new Error(`Server analysis failed: ${response.statusText}`);
-    }
-
-    const serverResult = await response.json() as { success: boolean; error?: string; result?: any };
-
-    if (!serverResult.success) {
-      throw new Error(serverResult.error || 'Server analysis failed');
-    }
-
-    return this.convertServerResult(serverResult, fileName || 'unknown');
+    if (!res.ok) throw new Error(res.statusText);
+    const json = (await res.json()) as { success: boolean; error?: string; result: any };
+    if (!json.success) throw new Error(json.error || 'Server error');
+    return this.convertServer(json.result, fileName || 'unknown');
   }
 
-  /**
-   * Basic local analysis fallback
-   */
-  private async analyzeLocally(
-    code: string,
-    language: string,
-    fileName?: string,
-    startTime?: number
-  ): Promise<AnalysisResult> {
-    const patterns = this.detectBasicPatterns(code);
-    const matches = this.findBasicMatches(code, patterns);
-
-    return {
-      hasSecrets: patterns.includes('potential_secret'),
-      hasBusinessLogic: patterns.includes('business_logic'),
-      hasInfrastructureExposure: patterns.includes('infrastructure'),
-      detectedPatterns: patterns,
-      riskLevel: this.calculateBasicRiskLevel(patterns),
-      suggestions: this.generateBasicSuggestions(patterns),
-      timestamp: new Date(),
-      fileName: fileName || 'Unknown',
-      matches,
-      analysisLevel: 'quick',
-      processingTime: startTime ? Date.now() - startTime : 0,
-      fromCache: false,
-    };
-  }
-
-  /**
-   * Basic pattern detection
-   */
-  private detectBasicPatterns(code: string): string[] {
-    const patterns: string[] = [];
-    const lowerCode = code.toLowerCase();
-
-    // Basic secret detection
-    if (/(?:api[_-]?key|password|token|secret)[_\s]*[:=]/i.test(code)) {
-      patterns.push('potential_secret');
-    }
-
-    // Basic business logic detection
-    if (/(?:calculate|price|auth|login|algorithm)/i.test(code)) {
-      patterns.push('business_logic');
-    }
-
-    // Basic infrastructure detection
-    if (/(?:localhost|127\.0\.0\.1|\d+\.\d+\.\d+\.\d+):\d+/i.test(code)) {
-      patterns.push('infrastructure');
-    }
-
-    return patterns;
-  }
-
-  /**
-   * Find basic matches
-   */
-  private findBasicMatches(code: string, patterns: string[]): Match[] {
+  private convertServer(result: any, fileName: string): AnalysisResult {
     const matches: Match[] = [];
-    const lines = code.split('\n');
-
-    lines.forEach((line, index) => {
-      patterns.forEach((pattern) => {
-        if (line.toLowerCase().includes(pattern.replace('_', ''))) {
-          matches.push({
-            pattern,
-            line: index + 1,
-            column: 1,
-            text: line.trim().substring(0, 50),
-            severity: pattern === 'potential_secret' ? 'high' : 'medium',
-          });
-        }
-      });
-    });
-
-    return matches;
-  }
-
-  /**
-   * Convert server result
-   */
-  private convertServerResult(serverResult: any, fileName: string): AnalysisResult {
-    const result = serverResult.result;
-
     return {
-      hasSecrets: result.secrets?.length > 0,
-      hasBusinessLogic: result.businessLogic?.length > 0,
-      hasInfrastructureExposure: result.infrastructure?.length > 0,
+      hasSecrets: result.secrets.length > 0,
+      hasBusinessLogic: result.businessLogic.length > 0,
+      hasInfrastructureExposure: result.infrastructure.length > 0,
       detectedPatterns: [
-        ...(result.secrets?.length > 0 ? ['potential_secret'] : []),
-        ...(result.businessLogic?.length > 0 ? ['business_logic'] : []),
-        ...(result.infrastructure?.length > 0 ? ['infrastructure'] : []),
+        ...result.secrets.map((_: any) => 'potential_secret'),
+        ...result.businessLogic.map((_: any) => 'business_logic'),
+        ...result.infrastructure.map((_: any) => 'infrastructure'),
       ],
-      riskLevel: this.convertServerRiskLevel(result.riskLevel || 0),
+      riskLevel: this.mapRiskLevel(result.riskLevel),
       suggestions: result.suggestions || [],
       timestamp: new Date(),
       fileName,
-      matches: [],
+      matches,
       analysisLevel: 'standard',
       fromCache: false,
     };
   }
 
-  // Utility methods
+  private async analyzeLocally(
+    code: string,
+    language: string,
+    fileName?: string,
+    start?: number
+  ): Promise<AnalysisResult> {
+    const patterns = this.detectBasic(code);
+    const matches = this.findBasic(code, patterns);
+    const elapsed = start ? Date.now() - start : 0;
+    return {
+      hasSecrets: patterns.includes('potential_secret'),
+      hasBusinessLogic: patterns.includes('business_logic'),
+      hasInfrastructureExposure: patterns.includes('infrastructure'),
+      detectedPatterns: patterns,
+      riskLevel: this.calcRisk(patterns),
+      suggestions: this.basicSuggestions(patterns),
+      timestamp: new Date(),
+      fileName: fileName || 'unknown',
+      matches,
+      analysisLevel: 'quick',
+      processingTime: elapsed,
+      fromCache: false,
+    };
+  }
+
+  private detectBasic(code: string): string[] {
+    const p: string[] = [];
+    if (/(?:api[_-]?key|password|token|secret)[_\s]*[:=]/i.test(code)) p.push('potential_secret');
+    if (/(?:calculate|price|auth|login|algorithm)/i.test(code)) p.push('business_logic');
+    if (/(?:localhost|\d+\.\d+\.\d+\.\d+):\d+/i.test(code)) p.push('infrastructure');
+    return p;
+  }
+
+  private findBasic(code: string, patterns: string[]): Match[] {
+    return code
+      .split('\n')
+      .flatMap((ln, i) =>
+        patterns
+          .filter((p) => ln.toLowerCase().includes(p.replace('_', '')))
+          .map((p) => ({
+            pattern: p,
+            line: i + 1,
+            column: 1,
+            text: ln.trim(),
+            severity: p === 'potential_secret' ? 'high' : 'medium',
+          }))
+      );
+  }
 
   private shouldTryServer(): boolean {
     const now = Date.now();
-
-    // Check server availability periodically
     if (now - this.lastServerCheck > this.serverCheckInterval) {
       this.checkServerAvailability();
       this.lastServerCheck = now;
     }
-
     return this.serverAvailable && this.configManager.get('enableServerFallback');
   }
 
   private async checkServerAvailability(): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-      const response = await fetch('http://localhost:8080/health', {
-        signal: controller.signal,
-        method: 'GET',
-      });
-
-      clearTimeout(timeoutId);
-      this.serverAvailable = response.ok;
-
-      if (this.serverAvailable) {
-        console.log('CXG server available');
-      }
-    } catch (error) {
+      const c = new AbortController();
+      setTimeout(() => c.abort(), 2000);
+      const r = await fetch('http://localhost:8080/api/v1/health', { signal: c.signal });
+      this.serverAvailable = r.ok;
+    } catch {
       this.serverAvailable = false;
     }
   }
 
-  private mapRiskToSeverity(riskLevel: string): 'low' | 'medium' | 'high' {
-    switch (riskLevel) {
-      case 'high':
-        return 'high';
-      case 'medium':
-        return 'medium';
-      default:
-        return 'low';
-    }
+  private mapRisk(r: string): 'low' | 'medium' | 'high' {
+    return r === 'high' ? 'high' : r === 'medium' ? 'medium' : 'low';
   }
-
-  private calculateBasicRiskLevel(patterns: string[]): 'low' | 'medium' | 'high' {
-    if (patterns.includes('potential_secret')) return 'high';
-    if (patterns.length > 1) return 'medium';
+  private mapRiskLevel(l: number): 'low' | 'medium' | 'high' {
+    return l >= 2 ? 'high' : l >= 1 ? 'medium' : 'low';
+  }
+  private calcRisk(p: string[]): 'low' | 'medium' | 'high' {
+    if (p.includes('potential_secret')) return 'high';
+    if (p.length > 1) return 'medium';
     return 'low';
   }
-
-  private generateBasicSuggestions(patterns: string[]): string[] {
-    const suggestions: string[] = [];
-
-    if (patterns.includes('potential_secret')) {
-      suggestions.push('Remove hardcoded secrets');
-    }
-    if (patterns.includes('business_logic')) {
-      suggestions.push('Review business logic before sharing');
-    }
-    if (patterns.includes('infrastructure')) {
-      suggestions.push('Avoid exposing infrastructure details');
-    }
-
-    return suggestions.length > 0 ? suggestions : ['Code appears safe to share'];
+  private basicSuggestions(p: string[]): string[] {
+    const s: string[] = [];
+    if (p.includes('potential_secret')) s.push('Remove hardcoded secrets');
+    if (p.includes('business_logic')) s.push('Review business logic before sharing');
+    if (p.includes('infrastructure')) s.push('Avoid exposing infrastructure details');
+    return s.length ? s : ['Code appears safe to share'];
   }
 
-  private convertServerRiskLevel(level: number): 'low' | 'medium' | 'high' {
-    if (level >= 2) return 'high';
-    if (level >= 1) return 'medium';
-    return 'low';
-  }
-
-  private initializeStorage(): void {
-    try {
-      const dbDir = path.dirname(this.dbPath);
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-    } catch (error) {
-      console.error('Failed to initialize storage:', error);
-    }
-  }
-
-  private loadRecentScans(): void {
-    const scansPath = path.join(path.dirname(this.dbPath), 'recent-scans.json');
-    try {
-      if (fs.existsSync(scansPath)) {
-        const data = fs.readFileSync(scansPath, 'utf8');
-        this.recentScans = JSON.parse(data).map((scan: any) => ({
-          ...scan,
-          timestamp: new Date(scan.timestamp),
-        }));
-      }
-    } catch (error) {
-      console.warn('Could not load recent scans:', error);
-      this.recentScans = [];
-    }
-  }
-
-  private storeRecentScan(result: AnalysisResult): void {
-    this.recentScans.push(result);
-
-    // Keep only last 50 scans
-    if (this.recentScans.length > 50) {
-      this.recentScans = this.recentScans.slice(-50);
-    }
-
-    this.saveRecentScans();
-  }
-
-  private saveRecentScans(): void {
-    const scansPath = path.join(path.dirname(this.dbPath), 'recent-scans.json');
-    try {
-      fs.writeFileSync(scansPath, JSON.stringify(this.recentScans, null, 2));
-    } catch (error) {
-      console.warn('Could not save recent scans:', error);
-    }
-  }
-
-  // Public API methods uses backward compatibility
-
-  /**
-   * Get recent scan results
-   */
   public getRecentScans(): AnalysisResult[] {
     return this.recentScans.slice(-10);
   }
-
-  /**
-   * Get security summary statistics
-   */
-  public getSecuritySummary(): { total: number; high: number; medium: number; low: number } {
-    const recentScans = this.getRecentScans();
+  public getSecuritySummary() {
+    const r = this.getRecentScans();
     return {
-      total: recentScans.length,
-      high: recentScans.filter((scan) => scan.riskLevel === 'high').length,
-      medium: recentScans.filter((scan) => scan.riskLevel === 'medium').length,
-      low: recentScans.filter((scan) => scan.riskLevel === 'low').length,
+      total: r.length,
+      high: r.filter((x) => x.riskLevel === 'high').length,
+      medium: r.filter((x) => x.riskLevel === 'medium').length,
+      low: r.filter((x) => x.riskLevel === 'low').length,
     };
   }
-
-  /**
-   * Get server availability status
-   */
   public isServerAvailable(): boolean {
     return this.serverAvailable;
   }
-
-  /**
-   * Manually refresh server availability
-   */
-  public async refreshServerAvailability(): Promise<void> {
+  public async refreshServerAvailability() {
     await this.checkServerAvailability();
   }
-
-  /**
-   * Get analysis statistics delegates to performance monitor
-   */
   public getAnalysisStats() {
     return {
       cache: analysisCache.getStats(),
@@ -542,21 +383,17 @@ export class LocalAnalysisEngine {
       legacy: this.getSecuritySummary(),
     };
   }
-
-  /**
-   * Clear caches and reset
-   */
   public reset(): void {
     this.recentScans = [];
-    this.saveRecentScans();
+    this.saveRecentScans().catch(console.error);
     analysisCache.clear();
     performanceMonitor.reset();
   }
 }
 
 /**
- * Factory functions for backward compatibility
- */
-export function createLocalAnalysisEngine(context: vscode.ExtensionContext): LocalAnalysisEngine {
-  return new LocalAnalysisEngine(context);
+ * backward-compat factory
+*/
+export function createLocalAnalysisEngine(ctx: vscode.ExtensionContext) {
+  return new LocalAnalysisEngine(ctx);
 }
