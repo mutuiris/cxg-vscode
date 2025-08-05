@@ -4,7 +4,7 @@
 
 ## Vision
 
-Enable developers to safely leverage AI assistance without compromising intellectual property, secrets, or competitive advantages. ContextGuard makes AI-assisted development secure by default, allowing developers to get help while protecting their most valuable code assets.
+Enable developers to safely leverage AI assistance without compromising intellectual property, secrets, or competitive advantages. cxg makes AI-assisted development secure by default, allowing developers to get help while protecting their most valuable code assets.
 
 ## Core Features
 
@@ -18,7 +18,7 @@ Enable developers to safely leverage AI assistance without compromising intellec
 ## How It Works
 
 ### 1. Code Interception
-When you copy code to share with an AI assistant, ContextGuard automatically intercepts and analyzes it.
+When you copy code to share with an AI assistant, cxg automatically intercepts and analyzes it.
 
 ### 2. Intelligent Analysis
 ContextGuard analyzes the code through multiple detection layers:
@@ -178,7 +178,7 @@ pnpm run package
 
 ## Contributing
 
-ContextGuard is in active development. Contributions welcome:
+cxg is in active development. Contributions welcome:
 
 1. Fork the repository
 2. Create a feature branch
