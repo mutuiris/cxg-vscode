@@ -1,10 +1,10 @@
 # Context eXtended Guard (cxg)
 
-**cxg** is an intelligent VS Code extension that protects developers from accidentally exposing sensitive information when using AI assistants. Built with cutting-edge edge computing and machine learning, ContextGuard intercepts, analyzes, and sanitizes code before it reaches AI tools like GitHub Copilot, ChatGPT, or Claude.
+**cxg** is an intelligent VS Code extension that protects developers from accidentally exposing sensitive information when using AI assistants. Built with computing and machine learning, cxg intercepts, analyzes, and sanitizes code before it reaches AI tools like GitHub Copilot, ChatGPT, or Claude.
 
 ## Vision
 
-Enable developers to safely leverage AI assistance without compromising intellectual property, secrets, or competitive advantages. cxg makes AI-assisted development secure by default, allowing developers to get help while protecting their most valuable code assets.
+Enable developers to safely leverage AI assistance without compromising intellectual property, secrets, or competitive advantages. cxg makes AI assisted development secure by default, allowing developers to get help while protecting their most valuable code assets.
 
 ## Core Features
 
@@ -21,7 +21,7 @@ Enable developers to safely leverage AI assistance without compromising intellec
 When you copy code to share with an AI assistant, cxg automatically intercepts and analyzes it.
 
 ### 2. Intelligent Analysis
-ContextGuard analyzes the code through multiple detection layers:
+cxg analyzes the code through multiple detection layers:
 - **Lexical Analysis**: Pattern matching for known secret formats
 - **AST Analysis**: Structural understanding of code context
 - **Semantic Analysis**: Business logic and data flow understanding
