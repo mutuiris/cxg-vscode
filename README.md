@@ -1,27 +1,16 @@
 # CXG - Context eXtended Guard
 
----
+**CXG** is a high-performance, AI-focused security layer for developers. Built for safeguarding intellectual property, CXG acts as a firewall for your codebase, ensuring safety and compliance when interacting with AI tools.
 
-## 🚨 The Hidden Crisis
+## Features
 
-- **67% of developers** use AI coding assistants daily
-- **Companies unknowingly feed** proprietary algorithms, API keys, and trade secrets to AI models
-- **No existing solution** protects code context before AI interaction
-- **Legal and compliance risks** are mounting as companies realize the scope
+- **Real-time Protection**: Sub-100ms analysis before code reaches AI
+- **Intelligent Detection**: Semantic understanding of proprietary logic vs. generic code
+- **Smart Sanitization**: Preserves functionality while removing sensitive data
+- **Compliance Ready**: Complete audit trails for security teams
+- **Universal Compatibility**: Supports all major AI assistants and IDEs
 
-## 🛡️ ContextGuard Solution
-
-ContextGuard is an intelligent security layer that intercepts, analyzes, and sanitizes code before it reaches AI assistants. Think of it as a firewall for your intellectual property.
-
-### ✨ Key Features
-
-- 🚀 **Real-time Protection** - Sub-100ms analysis before code reaches AI
-- 🧠 **Intelligent Detection** - Semantic understanding of proprietary logic vs. generic code
-- 🔄 **Smart Sanitization** - Preserves functionality while removing sensitive data
-- 📊 **Compliance Ready** - Complete audit trails for security teams
-- 🌍 **Works Everywhere** - Supports all major AI assistants and IDEs
-
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph LR
@@ -34,29 +23,53 @@ graph LR
     F --> B
 ```
 
-## 🚀 Quick Start
+## Getting Started
 
-### For Developers
+### Prerequisites
 
-1. **Install the VS Code Extension**
-   ```bash
-   code --install-extension contextguard.contextguard-vscode
-   ```
+- Node.js 18+
+- Go 1.21+
+- Docker & Docker Compose
+- VS Code (for extension development)
 
-2. **Configure your security level**
-   ```json
-   {
-     "contextguard.securityLevel": "balanced",
-     "contextguard.enableOfflineMode": true
-   }
-   ```
+### Installation
 
-3. **Start coding safely** - ContextGuard works silently in the background
+1. Clone the repository:
+```bash
+git clone https://github.com/mutuiris/cxg-vscode.git
+cd cxg-vscode
+```
 
+2. Install dependencies:
+```bash
+npm install
+```
 
-## 📦 Repository Structure
+3. Start the development environment:
+```bash
+npm run dev
+```
 
-This is a monorepo containing all ContextGuard components:
+### Running the Extension
+
+Install the VS Code extension:
+```bash
+code --install-extension contextguard.contextguard-vscode
+```
+
+Start coding safely—ContextGuard works silently in the background.
+
+### Basic Commands
+
+Configure your security level in `settings.json`:
+```json
+{
+  "contextguard.securityLevel": "balanced",
+  "contextguard.enableOfflineMode": true
+}
+```
+
+## Repository Structure
 
 ```
 contextguard/
@@ -74,33 +87,36 @@ contextguard/
 └── examples/             # Integration examples
 ```
 
-## 🔧 Development
+## Performance Highlights
 
-### Prerequisites
+CXG delivers exceptional performance for real-time analysis:
 
-- Node.js 18+
-- Go 1.21+
-- Docker & Docker Compose
-- VS Code (for extension development)
+- **Real-time Analysis**: Sub-100ms processing
+- **Concurrency**: Handles thousands of simultaneous requests
+- **Memory Efficient**: Optimized for modern development environments
 
-### Local Development
+## Development
 
+### Testing
+
+Run the test suite:
 ```bash
-# Clone the repository
-git clone https://github.com/mutuiris/cxg-vscode.git
-cd cxg-vscode
-
-# Install dependencies
-npm install
-
-# Start development environment
-npm run dev
-
-# Run tests
 npm test
 ```
 
+### Contributing
 
-<div align="center">
-  <b>Stop leaking secrets. Start protecting code.</b>
-</div>
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Inspired by modern security challenges in AI
+- Built with Go and TypeScript for high performance and compatibility
