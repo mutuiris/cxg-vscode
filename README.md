@@ -109,14 +109,6 @@ pnpm run package
 - Language-specific secret patterns
 - Framework detection across ecosystems
 
-## Technology Stack
-
-- **Frontend**: TypeScript, VS Code Extension API, React
-- **Edge**: Cloudflare Workers, WebAssembly (Go)
-- **Backend**: Go (Fiber), Python (FastAPI)
-- **Data**: PostgreSQL (Supabase), Redis (Upstash), Cloudflare R2
-- **ML**: Custom models for pattern detection
-- **Infrastructure**: Terraform, Docker, GitHub Actions
 
 ## Performance Benchmarks
 
