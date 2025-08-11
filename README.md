@@ -70,28 +70,28 @@ Currently in development. Installation will be available via:
 
 #### From GitHub
 
-1. Clone the repository:
-```bash
-git clone https://github.com/mutuiris/cxg-vscode.git
-cd cxg-vscode
-```
+1.  Clone the repository and its submodules:
+    ```bash
+    git clone --recurse-submodules https://github.com/mutuiris/cxg-vscode.git
+    cd cxg-vscode
+    ```
+    If you have already cloned the repository, initialize the submodule with:
+    ```bash
+    git submodule update --init --recursive
+    ```
 
-2. Install dependencies:
-```bash
-pnpm install
-```
+2.  Run the setup script to install dependencies and configure the environment:
+    ```bash
+    node scripts/dev/setup.js
+    ```
+    This script will install all Node.js and Go dependencies and prepare your local configuration.
 
-3. Build the extension:
-```bash
-pnpm run build
-```
+3.  Start the development environment:
+    ```bash
+    pnpm dev
+    ```
 
-4. Package the extension:
-```bash
-pnpm run package
-```
-
-5. Install the generated `.vsix` file in VS Code
+4.  Open the `cxg-vscode` folder in VS Code and press `F5` to launch the extension in a new development host window.
 
 
 ## Detection Capabilities
